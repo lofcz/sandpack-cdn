@@ -76,17 +76,16 @@ fn collect_file_paths(
         if metadata.is_dir() {
             collect_file_paths(entry_path, root_dir.clone(), files_map)?;
         } else if metadata.is_file() {
-            files_map.insert(
-                String::from(
-                    entry_path
-                        .strip_prefix(root_dir.clone())
-                        .unwrap()
-                        .as_os_str()
-                        .to_str()
-                        .unwrap(),
-                ),
-                metadata.len(),
-            );
+            // Module specifiers always use `/`, but `as_os_str` yields the
+            // platform separator (`\` on Windows). Normalize so the resolver
+            // can match nested files (e.g. `cjs/react.development.js`).
+            let rel_path = entry_path
+                .strip_prefix(root_dir.clone())
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace('\\', "/");
+            files_map.insert(rel_path, metadata.len());
         }
     }
 

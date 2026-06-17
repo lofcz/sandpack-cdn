@@ -1,17 +1,28 @@
-use std::sync::Arc;
+use std::num::NonZeroUsize;
+use std::sync::{Arc, LazyLock};
 
 use lru::LruCache;
 use parking_lot::Mutex;
 use rusqlite::{named_params, Connection, OpenFlags, OptionalExtension};
-use std::num::NonZeroUsize;
 
-use crate::app_error::AppResult;
+use crate::app_error::{AppResult, ServerError};
 
-use super::types::document::MinimalPackageData;
+use super::types::document::{MinimalPackageData, RegistryDocument};
+
+/// Shared client for on-demand npm registry lookups. We fetch package
+/// manifests lazily (only the packages users actually import) instead of
+/// replicating the entire npm registry.
+static NPM_HTTP: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .user_agent("sandpack-cdn")
+        .build()
+        .expect("failed to build npm registry http client")
+});
+
+const NPM_REGISTRY_URL: &str = "https://registry.npmjs.org";
 
 #[derive(Clone, Debug)]
 pub struct NpmDatabase {
-    pub db_path: String,
     db: Arc<Mutex<Connection>>,
     cache: Arc<Mutex<LruCache<String, MinimalPackageData>>>,
 }
@@ -28,7 +39,6 @@ impl NpmDatabase {
         let cache = LruCache::new(NonZeroUsize::new(500).unwrap());
 
         Ok(Self {
-            db_path: String::from(db_path),
             db: Arc::new(Mutex::new(connection)),
             cache: Arc::new(Mutex::new(cache)),
         })
@@ -45,39 +55,7 @@ impl NpmDatabase {
             (),
         )?;
 
-        connection.execute(
-            "CREATE TABLE IF NOT EXISTS last_sync (
-                id    TEXT PRIMARY KEY,
-                seq   INTEGER NOT NULL
-            );",
-            (),
-        )?;
-
         Ok(())
-    }
-
-    pub fn get_last_seq(&self) -> AppResult<i64> {
-        let connection = self.db.lock();
-
-        let mut stmt = connection.prepare("SELECT id, seq FROM last_sync WHERE id = (:id);")?;
-
-        let res = stmt
-            .query_row(named_params! { ":id": "_last" }, |row| {
-                Ok(row.get(1).unwrap_or(0))
-            })
-            .optional()
-            .unwrap_or(Some(0))
-            .unwrap_or(0);
-
-        Ok(res)
-    }
-
-    pub fn update_last_seq(&self, next_seq: i64) -> AppResult<usize> {
-        let connection = self.db.lock();
-        let mut stmt =
-            connection.prepare("INSERT OR REPLACE INTO last_sync (id, seq) VALUES (:id, :seq);")?;
-        let res = stmt.execute(named_params! { ":id": "_last", ":seq": next_seq })?;
-        Ok(res)
     }
 
     pub fn delete_package(&self, name: &str) -> AppResult<usize> {
@@ -138,11 +116,57 @@ impl NpmDatabase {
         }
     }
 
-    pub fn get_package_count(&self) -> AppResult<i64> {
-        // let connection = self.db.lock();
-        // let mut stmt = connection.prepare("SELECT COUNT(*) FROM package;")?;
-        // let res = stmt.query_row(named_params! {}, |row| Ok(row.get(0).unwrap_or(0)))?;
-        // Ok(res)
-        Ok(0)
+    /// Returns true if the package manifest is already known locally (cache or
+    /// SQLite). Cheap, synchronous, holds no lock across an await.
+    fn has_package(&self, name: &str) -> bool {
+        {
+            let mut cache = self.cache.lock();
+            if cache.get(name).is_some() {
+                return true;
+            }
+        }
+
+        let connection = self.db.lock();
+        let exists = match connection.prepare("SELECT 1 FROM package WHERE id = (:id) LIMIT 1;") {
+            Ok(mut stmt) => stmt
+                .exists(named_params! { ":id": name })
+                .unwrap_or(false),
+            Err(_) => false,
+        };
+        exists
+    }
+
+    /// Download a single package manifest from the npm registry and persist it.
+    /// Reuses `MinimalPackageData::from_doc`, which parses exactly the packument
+    /// shape that `registry.npmjs.org/<pkg>` returns.
+    async fn fetch_and_store(&self, name: &str) -> AppResult<()> {
+        let url = format!("{}/{}", NPM_REGISTRY_URL, name.replace('/', "%2f"));
+        let response = NPM_HTTP
+            .get(&url)
+            .header("Accept", "application/json")
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(ServerError::NpmManifestDownloadError {
+                status_code: response.status().as_u16(),
+                package_name: name.to_string(),
+            });
+        }
+
+        let body = response.text().await?;
+        let doc: RegistryDocument = serde_json::from_str(&body)?;
+        self.write_package(MinimalPackageData::from_doc(doc))?;
+        Ok(())
+    }
+
+    /// Ensure a package manifest exists locally, fetching it on demand from the
+    /// npm registry if missing. This replaces the old full-registry replication
+    /// thread: we only ever store the packages that get imported.
+    pub async fn ensure_package(&self, name: &str) -> AppResult<()> {
+        if self.has_package(name) {
+            return Ok(());
+        }
+        self.fetch_and_store(name).await
     }
 }

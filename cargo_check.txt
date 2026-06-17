@@ -1,0 +1,439 @@
+    Updating crates.io index
+     Locking 211 packages to latest compatible versions
+      Adding adler2 v2.0.1
+    Updating alloc-no-stdlib v2.0.3 -> v2.0.4
+    Updating alloc-stdlib v0.2.1 -> v0.2.4
+    Updating async-compression v0.3.8 -> v0.4.42
+    Updating async-trait v0.1.52 -> v0.1.89
+      Adding atomic-waker v1.1.2
+      Adding aws-lc-rs v1.17.0
+      Adding aws-lc-sys v0.41.0
+      Adding base64 v0.22.1
+    Updating base64-simd v0.7.0 -> v0.8.0
+    Updating brotli v3.3.4 -> v8.0.4
+    Updating brotli-decompressor v2.3.2 -> v5.0.3
+      Adding bs58 v0.5.1
+      Adding cfg_aliases v0.2.1
+      Adding chacha20 v0.10.0
+    Updating chrono v0.4.23 -> v0.4.45
+      Adding cmake v0.1.58
+      Adding combine v4.6.7
+      Adding compression-codecs v0.4.38
+      Adding compression-core v0.4.32
+      Adding core-foundation v0.10.1
+    Updating core-foundation-sys v0.8.3 -> v0.8.7
+      Adding cpufeatures v0.3.0
+    Updating crossbeam-channel v0.5.4 -> v0.5.8 (available: v0.5.15)
+    Updating crossbeam-epoch v0.8.2 -> v0.9.15 (available: v0.9.18)
+    Updating darling v0.14.2 -> v0.23.0
+    Updating darling_core v0.14.2 -> v0.23.0
+    Updating darling_macro v0.14.2 -> v0.23.0
+      Adding data-encoding v2.11.0
+      Adding deranged v0.5.8
+      Adding dotenvy v0.15.7
+      Adding dunce v1.0.5
+      Adding dyn-clone v1.0.20
+      Adding errno v0.3.14
+    Updating fallible-iterator v0.2.0 -> v0.3.0
+    Updating flate2 v1.0.22 -> v1.1.9
+      Adding foldhash v0.1.5
+      Adding foldhash v0.2.0
+      Adding fs_extra v1.3.0
+    Updating futures-channel v0.3.25 -> v0.3.32
+    Updating futures-core v0.3.25 -> v0.3.32
+    Updating futures-io v0.3.25 -> v0.3.32
+    Updating futures-macro v0.3.25 -> v0.3.32
+    Updating futures-sink v0.3.25 -> v0.3.32
+    Updating futures-task v0.3.25 -> v0.3.32
+    Updating futures-util v0.3.25 -> v0.3.32
+      Adding getrandom v0.2.17
+      Adding getrandom v0.3.4
+      Adding getrandom v0.4.2
+    Updating glob v0.3.0 -> v0.3.3
+      Adding h2 v0.4.15
+      Adding hashbrown v0.15.5
+      Adding hashbrown v0.16.1
+    Updating hashlink v0.8.1 -> v0.12.0
+      Adding http v1.4.2
+      Adding http-body v1.0.1
+      Adding http-body-util v0.1.3
+    Updating httparse v1.5.1 -> v1.10.1
+      Adding hyper v1.10.1
+      Adding hyper-rustls v0.27.9
+      Adding hyper-util v0.1.20
+      Adding id-arena v2.3.0
+    Updating ipnet v2.3.1 -> v2.12.0
+      Adding jni v0.22.4
+      Adding jni-macros v0.22.4
+      Adding jni-sys v0.4.1
+      Adding jni-sys-macros v0.4.1
+      Adding jobserver v0.1.34
+    Updating js-sys v0.3.58 -> v0.3.102
+    Updating lazy_static v1.4.0 -> v1.5.0
+      Adding leb128fmt v0.1.0
+    Updating libsqlite3-sys v0.25.2 -> v0.38.1
+      Adding linux-raw-sys v0.12.1
+    Updating lru v0.9.0 -> v0.18.0
+      Adding lru-slab v0.1.2
+    Updating memoffset v0.5.6 -> v0.9.1
+    Updating miette v3.2.0 -> v7.6.0
+    Updating miette-derive v3.2.0 -> v7.6.0
+    Updating miniz_oxide v0.4.4 -> v0.8.9
+    Updating mio v0.8.5 -> v1.2.1
+    Updating moka v0.8.2 -> v0.12.5 (available: v0.12.15)
+      Adding multer v2.1.0
+    Updating nanoid v0.4.0 -> v0.5.0
+    Updating node-semver v2.0.0 -> v2.2.0
+    Updating nom v7.1.0 -> v7.1.3
+      Adding nu-ansi-term v0.50.3
+      Adding num-conv v0.2.2
+    Updating openssl-probe v0.1.4 -> v0.2.1
+    Updating outref v0.1.0 -> v0.5.2
+      Adding powerfmt v0.2.0
+      Adding prettyplease v0.2.37
+    Updating quanta v0.9.3 -> v0.12.6
+      Adding quinn v0.11.9
+      Adding quinn-proto v0.11.14
+      Adding quinn-udp v0.5.14
+      Adding r-efi v5.3.0
+      Adding r-efi v6.0.0
+      Adding rand v0.9.4
+      Adding rand v0.10.1
+      Adding rand_chacha v0.9.0
+      Adding rand_core v0.9.5
+      Adding rand_core v0.10.1
+    Updating raw-cpuid v10.3.0 -> v11.6.0
+      Adding ref-cast v1.0.25
+      Adding ref-cast-impl v1.0.25
+    Updating reqwest v0.11.7 -> v0.13.4
+    Updating reqwest-middleware v0.1.6 -> v0.5.2
+    Updating reqwest-retry v0.1.5 -> v0.9.1
+    Updating retry-policies v0.1.1 -> v0.5.2
+      Adding ring v0.17.14
+    Updating rmp v0.8.11 -> v0.8.15
+    Updating rmp-serde v1.1.1 -> v1.3.1
+      Adding rsqlite-vfs v0.1.1
+    Updating rusqlite v0.28.0 -> v0.40.1
+      Adding rustc_version v0.4.1
+      Adding rustix v1.1.4
+      Adding rustls v0.23.40
+      Adding rustls-native-certs v0.8.4
+      Adding rustls-pki-types v1.14.1
+      Adding rustls-platform-verifier v0.7.0
+      Adding rustls-platform-verifier-android v0.1.1
+      Adding rustls-webpki v0.103.13
+      Adding schemars v0.9.0
+      Adding schemars v1.2.1
+    Updating security-framework v2.4.2 -> v3.7.0
+    Updating security-framework-sys v2.4.2 -> v2.17.0
+    Updating serde_bytes v0.11.7 -> v0.11.19
+    Updating serde_urlencoded v0.7.0 -> v0.7.1
+    Updating serde_with v2.1.0 -> v3.21.0
+    Updating serde_with_macros v2.1.0 -> v3.21.0
+      Adding sha1 v0.10.4 (available: v0.10.6)
+      Adding simd-adler32 v0.3.9
+      Adding simd_cesu8 v1.1.1
+      Adding simdutf8 v0.1.5
+    Updating slab v0.4.5 -> v0.4.12
+      Adding socket2 v0.6.4
+      Adding spin v0.9.8
+      Adding sqlite-wasm-rs v0.5.5
+      Adding subtle v2.6.1
+      Adding sync_wrapper v1.0.2
+      Adding system-configuration v0.7.0
+      Adding system-configuration-sys v0.6.0
+    Updating tar v0.4.37 -> v0.4.46
+      Adding time v0.3.49
+    Updating time-core v0.1.0 -> v0.1.9
+    Updating time-macros v0.2.6 -> v0.2.29
+      Adding tinyvec v1.11.0
+      Adding tinyvec_macros v0.1.1
+    Updating tokio v1.22.0 -> v1.52.3
+    Updating tokio-macros v1.7.0 -> v2.7.0
+      Adding tokio-rustls v0.26.4
+    Updating tokio-tungstenite v0.15.0 -> v0.21.0
+      Adding tokio-util v0.7.18
+      Adding tower v0.5.3
+      Adding tower-http v0.6.11
+      Adding tower-layer v0.3.3
+    Updating tower-service v0.3.1 -> v0.3.3
+    Updating tracing-log v0.1.3 -> v0.2.0
+    Updating tracing-subscriber v0.3.11 -> v0.3.23
+    Updating tracing-tree v0.2.1 -> v0.4.1
+    Updating tungstenite v0.14.0 -> v0.21.0
+    Updating unicode-width v0.1.9 -> v0.1.14
+      Adding unicode-xid v0.2.6
+      Adding untrusted v0.9.0
+    Updating uuid v0.8.2 -> v1.23.3
+      Adding vsimd v0.8.0
+    Updating warp v0.3.2 -> v0.3.7 (available: v0.4.3)
+      Adding wasip2 v1.0.4+wasi-0.2.12
+      Adding wasip3 v0.4.0+wasi-0.3.0-rc-2026-01-06
+    Updating wasm-bindgen v0.2.81 -> v0.2.125
+    Updating wasm-bindgen-macro v0.2.81 -> v0.2.125
+    Updating wasm-bindgen-macro-support v0.2.81 -> v0.2.125
+    Updating wasm-bindgen-shared v0.2.81 -> v0.2.125
+      Adding wasm-encoder v0.244.0
+      Adding wasm-metadata v0.244.0
+      Adding wasmparser v0.244.0
+      Adding wasmtimer v0.4.3
+      Adding web-time v1.1.0
+      Adding webpki-root-certs v1.0.7
+      Adding windows-registry v0.6.1
+      Adding windows-result v0.4.1
+      Adding windows-strings v0.5.1
+      Adding windows-sys v0.52.0
+      Adding windows-sys v0.60.2
+      Adding windows-targets v0.52.6
+      Adding windows-targets v0.53.5
+      Adding windows_aarch64_gnullvm v0.52.6
+      Adding windows_aarch64_gnullvm v0.53.1
+      Adding windows_aarch64_msvc v0.52.6
+      Adding windows_aarch64_msvc v0.53.1
+      Adding windows_i686_gnu v0.52.6
+      Adding windows_i686_gnu v0.53.1
+      Adding windows_i686_gnullvm v0.52.6
+      Adding windows_i686_gnullvm v0.53.1
+      Adding windows_i686_msvc v0.52.6
+      Adding windows_i686_msvc v0.53.1
+      Adding windows_x86_64_gnu v0.52.6
+      Adding windows_x86_64_gnu v0.53.1
+      Adding windows_x86_64_gnullvm v0.52.6
+      Adding windows_x86_64_gnullvm v0.53.1
+      Adding windows_x86_64_msvc v0.52.6
+      Adding windows_x86_64_msvc v0.53.1
+      Adding wit-bindgen v0.51.0
+      Adding wit-bindgen v0.57.1
+      Adding wit-bindgen-core v0.51.0
+      Adding wit-bindgen-rust v0.51.0
+      Adding wit-bindgen-rust-macro v0.51.0
+      Adding wit-component v0.244.0
+      Adding wit-parser v0.244.0
+    Updating xattr v0.2.2 -> v1.6.1
+      Adding zeroize v1.9.0
+ Downloading crates ...
+  Downloaded alloc-stdlib v0.2.4
+  Downloaded tar v0.4.46
+  Downloaded windows-registry v0.6.1
+  Downloaded zeroize v1.9.0
+  Downloaded time-macros v0.2.29
+  Downloaded tracing-tree v0.4.1
+  Downloaded rustls-platform-verifier v0.7.0
+  Downloaded warp v0.3.7
+  Downloaded rusqlite v0.40.1
+  Downloaded raw-cpuid v11.6.0
+  Downloaded reqwest v0.13.4
+  Downloaded h2 v0.4.15
+  Downloaded time v0.3.49
+  Downloaded brotli-decompressor v5.0.3
+  Downloaded hyper v1.10.1
+  Downloaded crossbeam-channel v0.5.8
+  Downloaded async-compression v0.4.42
+  Downloaded hashlink v0.12.0
+  Downloaded crossbeam-epoch v0.9.15
+  Downloaded outref v0.5.2
+  Downloaded brotli v8.0.4
+  Downloaded quanta v0.12.6
+  Downloaded node-semver v2.2.0
+  Downloaded multer v2.1.0
+  Downloaded fallible-iterator v0.3.0
+  Downloaded compression-codecs v0.4.38
+  Downloaded moka v0.12.5
+  Downloaded base64-simd v0.8.0
+  Downloaded vsimd v0.8.0
+  Downloaded reqwest-retry v0.9.1
+  Downloaded reqwest-middleware v0.5.2
+  Downloaded nanoid v0.5.0
+  Downloaded lru v0.18.0
+  Downloaded time-core v0.1.9
+  Downloaded sha1 v0.10.4
+  Downloaded serde_bytes v0.11.19
+  Downloaded memoffset v0.9.1
+  Downloaded dotenvy v0.15.7
+  Downloaded compression-core v0.4.32
+  Downloaded retry-policies v0.5.2
+  Downloaded libsqlite3-sys v0.38.1
+    Checking smallvec v1.15.2
+   Compiling getrandom v0.3.4
+    Checking memchr v2.8.2
+   Compiling serde v1.0.228
+   Compiling cfg-if v1.0.4
+    Checking windows-sys v0.61.2
+    Checking futures-core v0.3.32
+    Checking futures-sink v0.3.32
+    Checking parking_lot_core v0.9.12
+    Checking foldhash v0.2.0
+   Compiling tokio-macros v2.7.0
+    Checking slab v0.4.12
+    Checking futures-channel v0.3.32
+   Compiling futures-macro v0.3.32
+    Checking futures-io v0.3.32
+    Checking futures-task v0.3.32
+    Checking icu_normalizer v2.2.0
+    Checking lazy_static v1.5.0
+    Checking parking_lot v0.12.0
+    Checking hashbrown v0.17.1
+   Compiling dunce v1.0.5
+   Compiling fs_extra v1.3.0
+    Checking http v1.4.2
+   Compiling httparse v1.10.1
+   Compiling syn v1.0.103
+   Compiling aws-lc-rs v1.17.0
+   Compiling jobserver v0.1.34
+    Checking triomphe v0.1.15
+    Checking bytes-str v0.2.8
+    Checking indexmap v2.14.0
+   Compiling cc v1.2.64
+    Checking num-bigint v0.4.6
+    Checking alloc-no-stdlib v2.0.4
+    Checking zeroize v1.9.0
+   Compiling thiserror v2.0.18
+    Checking alloc-stdlib v0.2.4
+    Checking crossbeam-utils v0.8.8
+    Checking tower-service v0.3.3
+    Checking hstr v3.0.6
+    Checking simd-adler32 v0.3.9
+   Compiling winapi v0.3.9
+    Checking adler2 v2.0.1
+    Checking http-body v1.0.1
+    Checking swc_atoms v9.0.3
+    Checking brotli-decompressor v5.0.3
+    Checking serde_json v1.0.150
+    Checking rustls-pki-types v1.14.1
+    Checking aho-corasick v1.1.4
+   Compiling cmake v0.1.58
+    Checking miniz_oxide v0.8.9
+   Compiling rustls v0.23.40
+    Checking untrusted v0.9.0
+    Checking brotli v8.0.4
+    Checking flate2 v1.1.9
+    Checking futures-util v0.3.32
+   Compiling getrandom v0.4.2
+    Checking subtle v2.6.1
+    Checking atomic-waker v1.1.2
+    Checking idna_adapter v1.2.2
+    Checking compression-core v0.4.32
+    Checking rand_core v0.10.1
+    Checking idna v1.1.0
+    Checking getrandom v0.2.17
+    Checking windows-strings v0.5.1
+    Checking windows-result v0.4.1
+    Checking url v2.5.8
+    Checking rand_core v0.6.3
+    Checking sync_wrapper v1.0.2
+    Checking ipnet v2.12.0
+    Checking tower-layer v0.3.3
+   Compiling aws-lc-sys v0.41.0
+    Checking base64 v0.22.1
+   Compiling cargo_metadata v0.23.1
+    Checking rand_chacha v0.3.1
+    Checking dashmap v6.2.1
+    Checking http-body-util v0.1.3
+    Checking windows-registry v0.6.1
+    Checking swc_common v23.0.1
+    Checking bstr v1.12.1
+   Compiling darling_core v0.23.0
+   Compiling memoffset v0.9.1
+    Checking regex-automata v0.4.14
+    Checking cpufeatures v0.3.0
+   Compiling libsqlite3-sys v0.38.1
+    Checking chacha20 v0.10.0
+   Compiling vergen v9.1.0
+    Checking rand_core v0.9.5
+    Checking rand v0.8.4
+   Compiling psm v0.1.31
+    Checking sha1 v0.10.4
+   Compiling async-trait v0.1.89
+   Compiling crossbeam-epoch v0.9.15
+   Compiling multer v2.1.0
+    Checking data-encoding v2.11.0
+    Checking petgraph v0.7.1
+    Checking futures-executor v0.3.18
+    Checking rand_chacha v0.9.0
+    Checking socket2 v0.4.4
+    Checking rand v0.10.1
+   Compiling swc_core v69.0.0
+    Checking regex v1.12.4
+    Checking globset v0.4.18
+    Checking mio v1.2.1
+    Checking socket2 v0.6.4
+    Checking nu-ansi-term v0.50.3
+    Checking compression-codecs v0.4.38
+   Compiling stacker v0.1.24
+    Checking sharded-slab v0.1.4
+    Checking raw-cpuid v11.6.0
+    Checking swc_config v5.0.0
+    Checking Inflector v0.11.4
+   Compiling miette-derive v7.6.0
+    Checking tracing-log v0.2.0
+    Checking unicode-width v0.1.14
+    Checking spin v0.9.8
+   Compiling moka v0.12.5
+    Checking nom v7.1.3
+    Checking retry-policies v0.5.2
+    Checking rand v0.9.4
+    Checking tracing-subscriber v0.3.23
+    Checking quanta v0.12.6
+    Checking miette v7.6.0
+    Checking futures v0.3.18
+    Checking filetime v0.2.15
+    Checking tokio v1.52.3
+    Checking uuid v1.23.3
+    Checking serde_urlencoded v0.7.1
+    Checking crossbeam-channel v0.5.8
+    Checking swc_ecma_ast v25.0.0
+    Checking swc_ecma_loader v24.0.0
+    Checking hashlink v0.12.0
+    Checking rmp v0.8.15
+    Checking fallible-iterator v0.3.0
+    Checking vsimd v0.8.0
+    Checking outref v0.5.2
+    Checking nanoid v0.5.0
+    Checking tracing-tree v0.4.1
+    Checking tar v0.4.46
+    Checking rusqlite v0.40.1
+    Checking lru v0.18.0
+    Checking base64-simd v0.8.0
+    Checking chrono v0.4.45
+    Checking serde_bytes v0.11.19
+    Checking glob v0.3.3
+    Checking rmp-serde v1.3.1
+    Checking dotenvy v0.15.7
+   Compiling thiserror-impl v1.0.30
+   Compiling pin-project-internal v1.0.8
+   Compiling darling_macro v0.23.0
+    Checking thiserror v1.0.30
+    Checking pin-project v1.0.8
+   Compiling darling v0.23.0
+    Checking tungstenite v0.21.0
+    Checking node-semver v2.2.0
+   Compiling serde_with_macros v3.21.0
+    Checking swc_ecma_visit v25.0.0
+    Checking swc_ecma_parser v41.1.0
+    Checking swc_ecma_codegen v28.0.1
+    Checking serde_with v3.21.0
+    Checking swc_ecma_utils v31.0.0
+    Checking swc_ecma_transforms_base v44.0.2
+    Checking swc_ecma_transforms_module v49.0.0
+    Checking swc_ecma_transforms_optimization v47.0.0
+    Checking tokio-util v0.7.18
+    Checking async-compression v0.4.42
+    Checking tower v0.5.3
+    Checking tokio-util v0.6.9
+    Checking tokio-tungstenite v0.21.0
+    Checking h2 v0.3.9
+    Checking h2 v0.4.15
+    Checking tower-http v0.6.11
+    Checking rustls-webpki v0.103.13
+    Checking hyper v1.10.1
+    Checking hyper v0.14.15
+    Checking hyper-util v0.1.20
+    Checking tokio-rustls v0.26.4
+    Checking rustls-platform-verifier v0.7.0
+    Checking hyper-rustls v0.27.9
+    Checking reqwest v0.13.4
+    Checking warp v0.3.7
+    Checking reqwest-middleware v0.5.2
+    Checking reqwest-retry v0.9.1
+    Checking sandpack-cdn v0.0.0 (C:\Users\mstagl-dev\Documents\sandpack-cdn)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3m 39s

@@ -1,62 +1,42 @@
 use std::collections::HashSet;
 
-use swc_atoms::JsWord;
-use swc_common::SyntaxContext;
-use swc_ecmascript::ast;
-use swc_ecmascript::utils::ident::IdentLike;
-use swc_ecmascript::visit::{Fold, FoldWith};
+use swc_core::common::SyntaxContext;
+use swc_core::ecma::ast::{Callee, CallExpr, Expr};
+use swc_core::ecma::atoms::Atom;
+use swc_core::ecma::visit::{Visit, VisitWith};
 
-use super::utils::*;
+use super::utils::match_str;
 
-/// This pass collects dependencies in a module and compiles references as needed to work with Parcel's JSRuntime.
-pub fn dependency_collector<'a>(
-    items: &'a mut HashSet<String>,
-    decls: &'a HashSet<(JsWord, SyntaxContext)>,
-) -> impl Fold + 'a {
-    DependencyCollector { items, decls }
-}
-
+/// Collects `require("specifier")` calls so the CDN knows which packages a file
+/// depends on. Calls to a locally-declared `require` are ignored.
 pub struct DependencyCollector<'a> {
-    items: &'a mut HashSet<String>,
-    decls: &'a HashSet<(JsWord, SyntaxContext)>,
+    pub items: &'a mut HashSet<String>,
+    pub decls: &'a HashSet<(Atom, SyntaxContext)>,
 }
 
-impl<'a> DependencyCollector<'a> {
-    fn add_dependency(&mut self, specifier: JsWord) {
-        self.items.insert(specifier.to_string());
-    }
-}
+impl Visit for DependencyCollector<'_> {
+    fn visit_call_expr(&mut self, node: &CallExpr) {
+        node.visit_children_with(self);
 
-impl<'a> Fold for DependencyCollector<'a> {
-    fn fold_call_expr(&mut self, node: ast::CallExpr) -> ast::CallExpr {
-        use ast::{Callee::*, Expr::*};
-
-        let call_expr = match node.callee.clone() {
-            Expr(boxed) => boxed,
-            // Super and import
-            _ => return node,
+        let Callee::Expr(callee) = &node.callee else {
+            return;
         };
 
-        match &*call_expr {
-            Ident(ident) => {
-                // Bail if defined in scope
-                if self.decls.contains(&ident.to_id()) {
-                    return node.fold_children_with(self);
-                }
+        if let Expr::Ident(ident) = &**callee {
+            // Bail if `require` is shadowed by a local declaration.
+            if self.decls.contains(&ident.to_id()) {
+                return;
+            }
 
-                if ident.sym.to_string().as_str() != "require" {
-                    return node.fold_children_with(self);
+            if ident.sym.as_str() != "require" {
+                return;
+            }
+
+            if let Some(arg) = node.args.first() {
+                if let Some((specifier, _)) = match_str(&arg.expr) {
+                    self.items.insert(specifier.to_string());
                 }
             }
-            _ => return node.fold_children_with(self),
-        };
-
-        if let Some(arg) = node.args.get(0) {
-            if let Some((specifier, _)) = match_str(&*arg.expr) {
-                self.add_dependency(specifier);
-            }
-        };
-
-        node.fold_children_with(self)
+        }
     }
 }

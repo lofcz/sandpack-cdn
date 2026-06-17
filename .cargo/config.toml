@@ -1,0 +1,6 @@
+# Statically link the MSVC C runtime so the release .exe is a portable single
+# file that runs on a clean Windows host without the Visual C++ redistributable.
+# Combined with rusqlite's `bundled` feature (SQLite compiled in) and rustls TLS
+# (no OpenSSL), the binary has no external runtime DLL dependencies.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

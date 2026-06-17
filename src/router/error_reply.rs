@@ -1,5 +1,6 @@
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use serde::{self, Deserialize, Serialize};
-use warp::hyper::StatusCode;
 
 use crate::app_error::ServerError;
 
@@ -33,6 +34,16 @@ impl ErrorReply {
             format!("max-age={}", cache_ttl).as_str(),
         );
         Ok(reply)
+    }
+
+    /// Render this error as an HTTP response with the given cache TTL.
+    /// Serializing a plain error struct cannot realistically fail; if it does we
+    /// fall back to a bare 500 rather than panicking inside the response path.
+    pub fn respond(self, cache_ttl: u32) -> Response {
+        match self.as_reply(cache_ttl) {
+            Ok(reply) => reply.into_response(),
+            Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        }
     }
 }
 

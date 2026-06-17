@@ -1,34 +1,33 @@
 use std::collections::HashSet;
-use swc_atoms::JsWord;
-use swc_common::{Span, SyntaxContext};
-use swc_ecmascript::ast::{self, MemberProp};
+
+use swc_core::common::{Span, SyntaxContext};
+use swc_core::ecma::ast::{Expr, Lit, MemberExpr, MemberProp};
+use swc_core::ecma::atoms::Atom;
 
 pub fn match_member_expr(
-    expr: &ast::MemberExpr,
+    expr: &MemberExpr,
     idents: Vec<&str>,
-    decls: &HashSet<(JsWord, SyntaxContext)>,
+    decls: &HashSet<(Atom, SyntaxContext)>,
 ) -> bool {
-    use ast::{Expr::*, Ident};
-
     let mut member = expr;
     let mut idents = idents;
     while idents.len() > 1 {
         let expected = idents.pop().unwrap();
         let prop = match &member.prop {
-            MemberProp::Ident(Ident { ref sym, .. }) => sym,
+            MemberProp::Ident(ident_name) => &ident_name.sym,
             _ => return false,
         };
 
-        if prop != expected {
+        if prop.as_str() != expected {
             return false;
         }
 
         match &*member.obj {
-            Member(m) => member = m,
-            Ident(Ident { ref sym, span, .. }) => {
+            Expr::Member(m) => member = m,
+            Expr::Ident(ident) => {
                 return idents.len() == 1
-                    && sym == idents.pop().unwrap()
-                    && !decls.contains(&(sym.clone(), span.ctxt()));
+                    && ident.sym.as_str() == idents.pop().unwrap()
+                    && !decls.contains(&(ident.sym.clone(), ident.ctxt));
             }
             _ => return false,
         }
@@ -37,41 +36,14 @@ pub fn match_member_expr(
     false
 }
 
-pub fn match_str(node: &ast::Expr) -> Option<(JsWord, Span)> {
-    use ast::*;
-
+pub fn match_str(node: &Expr) -> Option<(Atom, Span)> {
     match node {
         // "string" or 'string'
-        Expr::Lit(Lit::Str(s)) => Some((s.value.clone(), s.span)),
+        Expr::Lit(Lit::Str(s)) => Some((s.value.to_atom_lossy().into_owned(), s.span)),
         // `string`
         Expr::Tpl(tpl) if tpl.quasis.len() == 1 && tpl.exprs.is_empty() => {
-            Some((tpl.quasis[0].raw.value.clone(), tpl.span))
+            Some((tpl.quasis[0].raw.clone(), tpl.span))
         }
         _ => None,
     }
-}
-
-#[macro_export]
-macro_rules! fold_member_expr_skip_prop {
-    () => {
-        fn fold_member_expr(
-            &mut self,
-            mut node: swc_ecmascript::ast::MemberExpr,
-        ) -> swc_ecmascript::ast::MemberExpr {
-            node.obj = node.obj.fold_with(self);
-
-            if node.computed {
-                node.prop = node.prop.fold_with(self);
-            }
-
-            node
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! id {
-    ($ident: expr) => {
-        ($ident.sym.clone(), $ident.span.ctxt)
-    };
 }

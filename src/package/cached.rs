@@ -80,7 +80,7 @@ impl CachedPackageProcessor {
         package_version: &str,
     ) -> Result<Content, ServerError> {
         let key = format!("{}@{}", package_name, package_version);
-        if let Some(found_value) = self.cache.get(&key) {
+        if let Some(found_value) = self.cache.get(&key).await {
             get_processed_pkg(
                 package_name,
                 package_version,

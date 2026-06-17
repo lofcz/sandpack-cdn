@@ -1,30 +1,28 @@
 // This file contains hardcoded additional exports for packages that don't provide exports
-use lazy_static::lazy_static;
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
-lazy_static! {
-    static ref EXPORTS_MAP: HashMap<&'static str, Vec<String>> = {
-        let mut m = HashMap::new();
-        m.insert(
-            "react",
-            Vec::from([
-                String::from("jsx-runtime"),
-                String::from("jsx-dev-runtime"),
-                String::from("unstable-shared-subset"),
-            ]),
-        );
-        m.insert(
-            "scheduler",
-            Vec::from([
-                String::from("tracing"),
-                String::from("tracing-profiling"),
-                String::from("unstable_mock"),
-                String::from("unstable_post_task"),
-            ]),
-        );
-        m
-    };
-}
+static EXPORTS_MAP: LazyLock<HashMap<&'static str, Vec<String>>> = LazyLock::new(|| {
+    let mut m = HashMap::new();
+    m.insert(
+        "react",
+        Vec::from([
+            String::from("jsx-runtime"),
+            String::from("jsx-dev-runtime"),
+            String::from("unstable-shared-subset"),
+        ]),
+    );
+    m.insert(
+        "scheduler",
+        Vec::from([
+            String::from("tracing"),
+            String::from("tracing-profiling"),
+            String::from("unstable_mock"),
+            String::from("unstable_post_task"),
+        ]),
+    );
+    m
+});
 
 /**
  * Get the additional exports for packages with missing/no exports

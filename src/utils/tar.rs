@@ -2,7 +2,7 @@ use std::{io::Cursor, path::Path};
 
 use flate2::read::GzDecoder;
 use tar::Archive;
-use warp::hyper::body::Bytes;
+use bytes::Bytes;
 
 use crate::app_error::ServerError;
 

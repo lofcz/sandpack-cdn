@@ -1,6 +1,6 @@
+use axum::http;
 use thiserror::Error;
 use tokio::sync::broadcast;
-use warp::{hyper::http, reject};
 
 pub type AppResult<T> = Result<T, ServerError>;
 
@@ -16,8 +16,6 @@ pub enum ServerError {
     RequestErrorStatus { status_code: u16 },
     #[error("IO Operation failed")]
     IoError(#[from] std::io::Error),
-    #[error("Could not parse url")]
-    UrlParseError(#[from] url::ParseError),
     #[error("Could not parse json string")]
     JSONParseError(#[from] serde_json::Error),
     #[error("Package version not found {0}@{1}")]
@@ -68,8 +66,6 @@ impl From<ServerError> for std::io::Error {
         std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
     }
 }
-
-impl reject::Reject for ServerError {}
 
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("stringified error: {inner}")]

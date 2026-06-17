@@ -4,4 +4,3 @@ mod error_reply;
 mod health;
 mod utils;
 mod routes_v1;
-mod routes_v2;

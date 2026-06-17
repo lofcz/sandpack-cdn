@@ -5,7 +5,7 @@ use flate2::{bufread::GzEncoder, Compression};
 use moka::future::Cache;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
-use warp::hyper::body::Bytes;
+use bytes::Bytes;
 
 pub type Content = Arc<Cursor<Bytes>>;
 
@@ -105,7 +105,7 @@ impl PackageContentFetcher {
     pub async fn get(&self, url: &str) -> Result<Content, ServerError> {
         let key = String::from(url);
         let client = get_client();
-        if let Some(found_value) = self.cache.get(&key) {
+        if let Some(found_value) = self.cache.get(&key).await {
             get_tarball(url, client, found_value).await
         } else {
             let cached: Cached<Content> = Cached::new(self.refresh_interval);
@@ -128,6 +128,7 @@ pub async fn download_package_content(
     npm_db: &NpmDatabase,
     content_fetcher: &PackageContentFetcher,
 ) -> Result<Content, ServerError> {
+    npm_db.ensure_package(package_name).await?;
     let manifest = npm_db.get_package(package_name)?;
     if let Some(version_data) = manifest.versions.get(version) {
         let content = content_fetcher.get(version_data.tarball.as_str()).await?;

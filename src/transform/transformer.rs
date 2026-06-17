@@ -1,28 +1,28 @@
 use std::collections::{HashMap, HashSet};
-use swc_atoms::{js_word, JsWord};
-use swc_common::comments::SingleThreadedComments;
-use swc_common::{chain, sync::Lrc, FileName, Globals, Mark, SourceMap};
-use swc_ecma_preset_env::{preset_env, Mode::Entry, Targets, Version, Versions};
-use swc_ecmascript::ast::Module;
-use swc_ecmascript::codegen::text_writer::JsWriter;
-use swc_ecmascript::parser::lexer::Lexer;
-use swc_ecmascript::parser::{EsConfig, Parser, StringInput, Syntax};
-use swc_ecmascript::transforms::modules::common_js::common_js;
-use swc_ecmascript::transforms::modules::common_js::Config as CommonJSConfig;
-use swc_ecmascript::transforms::resolver::resolver_with_mark;
-use swc_ecmascript::transforms::Assumptions;
-use swc_ecmascript::transforms::{
-    compat::reserved_words::reserved_words, fixer, helpers, hygiene,
-    optimization::simplify::dead_branch_remover, optimization::simplify::expr_simplifier,
-    proposals::decorators,
-};
-use swc_ecmascript::visit::FoldWith;
+
+use swc_core::common::comments::SingleThreadedComments;
+use swc_core::common::{sync::Lrc, FileName, Globals, Mark, SourceMap, SyntaxContext, GLOBALS};
+use swc_core::ecma::ast::{EsVersion, Module, Program};
+use swc_core::ecma::atoms::Atom;
+use swc_core::ecma::codegen::text_writer::JsWriter;
+use swc_core::ecma::codegen::{Config as CodegenConfig, Emitter};
+use swc_core::ecma::parser::lexer::Lexer;
+use swc_core::ecma::parser::{EsSyntax, Parser, StringInput, Syntax};
+use swc_core::ecma::transforms::base::fixer::fixer;
+use swc_core::ecma::transforms::base::helpers::{inject_helpers, Helpers, HELPERS};
+use swc_core::ecma::transforms::base::hygiene::hygiene;
+use swc_core::ecma::transforms::base::resolver;
+use swc_core::ecma::transforms::module::common_js::{common_js, Config as CommonJsConfig};
+use swc_core::ecma::transforms::module::path::Resolver;
+use swc_core::ecma::transforms::optimization::simplify::expr::Config as SimplifyExprConfig;
+use swc_core::ecma::transforms::optimization::simplify::{dead_branch_remover, expr_simplifier};
+use swc_core::ecma::utils::collect_decls;
+use swc_core::ecma::visit::{VisitMutWith, VisitWith};
 use tracing::info;
 
 use crate::app_error::ServerError;
 
-use super::decl_collector::collect_decls;
-use super::dependency_collector::dependency_collector;
+use super::dependency_collector::DependencyCollector;
 use super::env_replacer::EnvReplacer;
 
 #[derive(Debug)]
@@ -34,13 +34,11 @@ pub struct TransformedFile {
 fn parse(
     code: &str,
     source_map: &Lrc<SourceMap>,
-) -> Result<(Module, SingleThreadedComments), ServerError> {
-    // Attempt to convert the path to be relative to the project root.
-    // If outside the project root, use an absolute path so that if the project root moves the path still works.
-    let source_file = source_map.new_source_file(FileName::Anon, code.into());
+    comments: &SingleThreadedComments,
+) -> Result<Module, ServerError> {
+    let source_file = source_map.new_source_file(FileName::Anon.into(), code.to_string());
 
-    let comments = SingleThreadedComments::default();
-    let syntax = Syntax::Es(EsConfig {
+    let syntax = Syntax::Es(EsSyntax {
         jsx: false,
         export_default_from: true,
         decorators: true,
@@ -49,50 +47,15 @@ fn parse(
 
     let lexer = Lexer::new(
         syntax,
-        Default::default(),
+        EsVersion::latest(),
         StringInput::from(&*source_file),
-        Some(&comments),
+        Some(comments),
     );
 
     let mut parser = Parser::new_from(lexer);
-    match parser.parse_module() {
-        Err(err) => Err(ServerError::SWCParseError {
-            message: format!("{:?}", err),
-        }),
-        Ok(module) => Ok((module, comments)),
-    }
-}
-
-fn get_versions() -> Versions {
-    // based on `npx browserslist ">1%, not ie 11, not op_mini all"`
-    swc_ecma_preset_env::BrowserData::<std::option::Option<swc_ecma_preset_env::Version>> {
-        chrome: Some(Version {
-            major: 93,
-            minor: 0,
-            patch: 0,
-        }),
-        edge: Some(Version {
-            major: 94,
-            minor: 0,
-            patch: 0,
-        }),
-        firefox: Some(Version {
-            major: 93,
-            minor: 0,
-            patch: 0,
-        }),
-        ios: Some(Version {
-            major: 14,
-            minor: 0,
-            patch: 0,
-        }),
-        safari: Some(Version {
-            major: 14,
-            minor: 1,
-            patch: 0,
-        }),
-        ..Default::default()
-    }
+    parser.parse_module().map_err(|err| ServerError::SWCParseError {
+        message: format!("{:?}", err),
+    })
 }
 
 #[tracing::instrument(name = "transform_file", skip(code))]
@@ -108,133 +71,98 @@ pub fn transform_file(filename: &str, code: &str) -> Result<TransformedFile, Ser
     }
 
     let source_map = Lrc::new(SourceMap::default());
-    let (mut module, comments) = parse(code, &source_map)?;
+    let comments = SingleThreadedComments::default();
+    let module = parse(code, &source_map, &comments)?;
 
-    swc_common::GLOBALS.set(&Globals::new(), || {
-        helpers::HELPERS.set(
-            &helpers::Helpers::new(/* external helpers from @swc/helpers */ true),
-            || {
-                let global_mark = Mark::fresh(Mark::root());
-                module = {
-                    let mut passes = chain!(
-                        // Decorators can use type information, so must run before the TypeScript pass.
-                        decorators::decorators(decorators::Config {
-                            legacy: true,
-                            // Always disabled for now, SWC's implementation doesn't match TSC.
-                            emit_metadata: false
-                        }),
-                        resolver_with_mark(global_mark),
-                    );
+    // SWC's visit/fold passes recurse deeply (common_js, simplify, ...). The
+    // required depth easily exceeds the 2 MB default Windows thread stack (Linux
+    // defaults to 8 MB, which is why this only bit on Windows). Grow the stack on
+    // demand instead of relying on the OS-provided size so debug builds, tests
+    // and the server all behave identically. `maybe_grow` runs on the same thread
+    // so thread-locals (GLOBALS/HELPERS) stay intact.
+    stacker::maybe_grow(2 * 1024 * 1024, 64 * 1024 * 1024, move || {
+        GLOBALS.set(&Globals::new(), || {
+            HELPERS.set(
+                &Helpers::new(/* external helpers from @swc/helpers */ true),
+                || {
+                    let unresolved_mark = Mark::new();
+                    let top_level_mark = Mark::new();
 
-                    module.fold_with(&mut passes)
-                };
+                    let mut program =
+                        Program::Module(module).apply(resolver(unresolved_mark, top_level_mark, false));
 
-                let mut preset_env_config = swc_ecma_preset_env::Config {
-                    dynamic_import: true,
-                    ..Default::default()
-                };
+                    // Inline process.env.NODE_ENV / process.browser so that the
+                    // simplifier can drop dead branches (and we don't collect deps
+                    // that live inside always-false conditionals).
+                    let mut env: HashMap<Atom, Atom> = HashMap::new();
+                    env.insert("NODE_ENV".into(), "development".into());
 
-                let versions = get_versions();
-                preset_env_config.targets = Some(Targets::Versions(versions));
-                preset_env_config.shipped_proposals = true;
-                preset_env_config.mode = Some(Entry);
-                preset_env_config.bugfixes = true;
+                    let decls: HashSet<(Atom, SyntaxContext)> =
+                        collect_decls(&program).into_iter().collect();
+                    program.visit_mut_with(&mut EnvReplacer {
+                        env: &env,
+                        is_browser: true,
+                        decls: &decls,
+                    });
 
-                let mut env: HashMap<JsWord, JsWord> = HashMap::new();
-                env.insert(js_word!("NODE_ENV"), JsWord::from("development"));
+                    let program = program
+                        .apply(expr_simplifier(unresolved_mark, SimplifyExprConfig::default()))
+                        .apply(dead_branch_remover(unresolved_mark))
+                        .apply(common_js(
+                            Resolver::Default,
+                            unresolved_mark,
+                            CommonJsConfig::default(),
+                            // FeatureFlag, inferred from the `common_js` signature.
+                            Default::default(),
+                        ))
+                        .apply(inject_helpers(unresolved_mark));
 
-                let mut decls = collect_decls(&module);
+                    // Collect dependencies - ALWAYS RUN THIS AFTER THE CJS CONVERSION
+                    // (so that `import` statements rewritten to `require` are seen).
+                    let decls: HashSet<(Atom, SyntaxContext)> =
+                        collect_decls(&program).into_iter().collect();
+                    let mut dependencies: HashSet<String> = HashSet::new();
+                    program.visit_with(&mut DependencyCollector {
+                        items: &mut dependencies,
+                        decls: &decls,
+                    });
 
-                // dead code elimination and env inlining
-                let module = {
-                    let mut passes = chain!(
-                        // Inline process.env and process.browser
-                        EnvReplacer {
-                            env: &env,
-                            is_browser: true,
-                            decls: &decls,
-                        },
-                        // Simplify expressions and remove dead branches so that we
-                        // don't include dependencies inside conditionals that are always false.
-                        expr_simplifier(Default::default()),
-                        dead_branch_remover(),
-                    );
+                    let program = program.apply(hygiene()).apply(fixer(Some(&comments)));
 
-                    module.fold_with(&mut passes)
-                };
-
-                // Run preset_env
-                let module = {
-                    let mut passes = chain!(
-                        // Transpile new syntax to older syntax if needed
-                        preset_env(
-                            global_mark,
-                            Some(&comments),
-                            preset_env_config,
-                            Assumptions::all()
-                        ),
-                        // Inject SWC helpers if needed.
-                        helpers::inject_helpers(),
-                    );
-
-                    module.fold_with(&mut passes)
-                };
-
-                // convert down to commonjs
-                let module = {
-                    let commonjs_config = CommonJSConfig::default();
-
-                    let mut passes = chain!(
-                        resolver_with_mark(global_mark),
-                        common_js(global_mark, commonjs_config, None)
-                    );
-
-                    module.fold_with(&mut passes)
-                };
-
-                // Collect dependencies - ALWAYS RUN THIS LAST
-                decls = collect_decls(&module);
-                let mut dependencies: HashSet<String> = HashSet::new();
-                let module = module.fold_with(&mut dependency_collector(&mut dependencies, &decls));
-
-                let program = {
-                    let mut passes = chain!(reserved_words(), hygiene(), fixer(Some(&comments)),);
-                    module.fold_with(&mut passes)
-                };
-
-                // Remove sourcemap comment
-                {
-                    let (mut _leading_comments, mut trailing_comments) = comments.borrow_all_mut();
-                    for (_key, value) in trailing_comments.iter_mut() {
-                        if let Some(index) = value
-                            .iter()
-                            .position(|comment| comment.text.starts_with("# sourceMappingURL"))
-                        {
-                            value.remove(index);
+                    // Remove sourcemap comment
+                    {
+                        let (mut _leading_comments, mut trailing_comments) =
+                            comments.borrow_all_mut();
+                        for (_key, value) in trailing_comments.iter_mut() {
+                            if let Some(index) = value.iter().position(|comment| {
+                                comment.text.starts_with("# sourceMappingURL")
+                            }) {
+                                value.remove(index);
+                            }
                         }
                     }
-                }
 
-                // Print code...
-                let mut buf = vec![];
-                let writer = Box::new(JsWriter::new(source_map.clone(), "\n", &mut buf, None));
-                let emitter_config = swc_ecmascript::codegen::Config { minify: true };
-                let mut emitter = swc_ecmascript::codegen::Emitter {
-                    cfg: emitter_config,
-                    comments: Some(&comments),
-                    cm: source_map,
-                    wr: writer,
-                };
-                emitter.emit_module(&program)?;
+                    // Print code...
+                    let mut buf = vec![];
+                    {
+                        let mut emitter = Emitter {
+                            cfg: CodegenConfig::default().with_minify(true),
+                            comments: Some(&comments),
+                            cm: source_map.clone(),
+                            wr: JsWriter::new(source_map.clone(), "\n", &mut buf, None),
+                        };
+                        emitter.emit_program(&program)?;
+                    }
 
-                let output = String::from(std::str::from_utf8(&buf).unwrap_or(""));
+                    let output = String::from(std::str::from_utf8(&buf).unwrap_or(""));
 
-                Ok(TransformedFile {
-                    content: output,
-                    dependencies,
-                })
-            },
-        )
+                    Ok(TransformedFile {
+                        content: output,
+                        dependencies,
+                    })
+                },
+            )
+        })
     })
 }
 
@@ -253,6 +181,19 @@ mod test {
     }
 
     #[test]
+    fn collects_conditional_require_deps() {
+        let code = "'use strict';\n\nif (process.env.NODE_ENV === 'production') {\n  module.exports = require('./cjs/react.production.min.js');\n} else {\n  module.exports = require('./cjs/react.development.js');\n}\n";
+        let res = transform_file("index.js", code).unwrap();
+        println!("CONTENT >>>{}<<<", res.content);
+        println!("DEPS >>>{:?}<<<", res.dependencies);
+        assert!(
+            res.dependencies.contains("./cjs/react.development.js"),
+            "expected development require to be collected, got {:?}",
+            res.dependencies
+        );
+    }
+
+    #[test]
     fn remove_sourcemap_comment() {
         // TODO: Allow inline sourcemaps?
         assert_eq!(
@@ -262,7 +203,7 @@ mod test {
             )
             .unwrap()
             .content,
-            String::from("\"use strict\";module.exports=\"hello world\"; //other-comment\n")
+            String::from("\"use strict\";module.exports=\"hello world\";//other-comment\n")
         );
     }
 }

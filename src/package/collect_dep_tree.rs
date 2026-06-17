@@ -116,6 +116,7 @@ async fn resolve_dep(
     npm_db: &NpmDatabase,
     pkg_processor: &CachedPackageProcessor,
 ) -> ResolveDepResult {
+    npm_db.ensure_package(&req.name).await?;
     let manifest = npm_db.get_package(&req.name)?;
     if let Some(resolved_version) = req.resolve_version(&manifest) {
         let dependencies = pkg_processor

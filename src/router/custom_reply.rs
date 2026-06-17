@@ -1,12 +1,8 @@
 use std::collections::HashMap;
 
+use axum::http::{HeaderName, HeaderValue, StatusCode};
+use axum::response::{IntoResponse, Response};
 use serde::Serialize;
-use warp::{
-    http::HeaderValue,
-    hyper::{header::HeaderName, StatusCode},
-    reply::Response,
-    Reply,
-};
 
 use crate::{app_error::ServerError, utils::msgpack::serialize_msgpack};
 
@@ -56,16 +52,17 @@ impl CustomReply {
     }
 }
 
-impl Reply for CustomReply {
-    #[inline]
+impl IntoResponse for CustomReply {
     fn into_response(self) -> Response {
         let mut response = Response::new(self.body.into());
         *response.status_mut() = self.status;
         for (key, value) in self.headers {
-            response.headers_mut().insert(
-                HeaderName::try_from(key.as_str()).unwrap(),
-                HeaderValue::try_from(value.as_str()).unwrap(),
-            );
+            if let (Ok(name), Ok(val)) = (
+                HeaderName::try_from(key.as_str()),
+                HeaderValue::try_from(value.as_str()),
+            ) {
+                response.headers_mut().insert(name, val);
+            }
         }
         response
     }

@@ -1,9 +1,10 @@
-use crate::npm_replicator::{database::NpmDatabase, replication_task};
-use dotenv::dotenv;
+use crate::npm_replicator::database::NpmDatabase;
+use dotenvy::dotenv;
 use std::env;
 use std::net::SocketAddr;
-use warp::http::header::{HeaderMap, HeaderValue};
-use warp::Filter;
+use tower_http::compression::CompressionLayer;
+use tower_http::cors::CorsLayer;
+use tower_http::trace::TraceLayer;
 
 mod app_error;
 mod cached;
@@ -44,32 +45,32 @@ async fn main() -> Result<(), std::io::Error> {
     // create data directory
     tokio::fs::create_dir_all(String::from(temp_dir)).await?;
 
-    // Setup npm registry replicator
+    // Setup the npm package store. Packages are fetched on demand from the npm
+    // registry (see NpmDatabase::ensure_package) instead of replicating the
+    // whole registry, so no background sync thread is needed.
     let npm_db = NpmDatabase::new(&npm_db_path).unwrap();
     npm_db.init().unwrap();
-    replication_task::spawn_sync_thread(npm_db.clone());
 
-    // cors headers
-    let mut headers = HeaderMap::new();
-    headers.insert("Access-Control-Allow-Origin", HeaderValue::from_static("*"));
-    headers.insert(
-        "Access-Control-Allow-Headers",
-        HeaderValue::from_static("*"),
-    );
-    headers.insert(
-        "Access-Control-Allow-Methods",
-        HeaderValue::from_static("GET, POST, OPTIONS"),
-    );
-    let cors_headers_filter = warp::reply::with::headers(headers);
+    // Layers are applied outermost-last in axum: requests flow
+    // Trace -> Cors -> Compression -> handler, responses flow back out.
+    let app = router::routes::routes(npm_db, app_data)
+        // Negotiated gzip compression (replaces warp::compression::gzip()).
+        .layer(CompressionLayer::new())
+        // Allow any origin/method/header and auto-handle OPTIONS preflight
+        // (replaces the manual Access-Control-* header filter).
+        .layer(CorsLayer::permissive())
+        // Per-request tracing spans (replaces warp::trace::request()).
+        .layer(TraceLayer::new_for_http());
 
-    let filter = router::routes::routes(npm_db, app_data)
-        .with(warp::trace::request())
-        .with(cors_headers_filter)
-        .with(warp::compression::gzip());
-
-    let addr: SocketAddr = ([0, 0, 0, 0], port).into();
+    // Bind to loopback only: the CDN is a private sidecar reached exclusively by
+    // the host app over http://localhost (health check + reverse proxy). Loopback
+    // traffic is exempt from Windows Firewall, so this avoids the "allow this app
+    // through the firewall" prompt (which needs admin) and keeps the CDN off the
+    // network entirely.
+    let addr: SocketAddr = ([127, 0, 0, 1], port).into();
     println!("Server running on {}", addr);
-    warp::serve(filter).run(addr).await;
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
 
     Ok(())
 }
