@@ -14,3 +14,10 @@ where
         .map_err(|_e| ServerError::SerializeError())?;
     Ok(buf)
 }
+
+pub fn deserialize_msgpack<T>(bytes: &[u8]) -> Result<T, ServerError>
+where
+    T: serde::de::DeserializeOwned,
+{
+    rmp_serde::from_slice(bytes).map_err(|_e| ServerError::SerializeError())
+}

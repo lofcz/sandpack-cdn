@@ -22,8 +22,12 @@ pub struct AppState {
 
 pub fn routes(npm_db: NpmDatabase, app_data: AppConfig) -> Router {
     let pkg_content_fetcher = PackageContentFetcher::new();
-    let pkg_processor =
-        CachedPackageProcessor::new(npm_db.clone(), pkg_content_fetcher, &app_data.temp_dir);
+    let pkg_processor = CachedPackageProcessor::new(
+        npm_db.clone(),
+        pkg_content_fetcher,
+        &app_data.temp_dir,
+        app_data.package_cache_dir,
+    );
 
     let state = AppState {
         npm_db,

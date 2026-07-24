@@ -2,6 +2,7 @@ use crate::npm_replicator::database::NpmDatabase;
 use dotenvy::dotenv;
 use std::env;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
@@ -19,6 +20,8 @@ mod utils;
 #[derive(Clone)]
 pub struct AppConfig {
     temp_dir: String,
+    /// Durable transform cache for exact `name@version` (survives process restarts).
+    package_cache_dir: PathBuf,
 }
 
 #[tokio::main]
@@ -38,12 +41,26 @@ async fn main() -> Result<(), std::io::Error> {
 
     let temp_dir_path = env::current_dir()?.join("temp_files");
     let temp_dir = temp_dir_path.as_os_str().to_str().unwrap();
-    let app_data = AppConfig {
-        temp_dir: String::from(temp_dir),
+
+    // Prefer PACKAGE_CACHE_DIR; otherwise sibling of the sqlite db
+    // (`…/data/npm.sqlite` → `…/data/package_cache`), then `./package_cache`.
+    let package_cache_dir = match env::var("PACKAGE_CACHE_DIR") {
+        Ok(p) if !p.is_empty() => PathBuf::from(p),
+        _ => PathBuf::from(&npm_db_path)
+            .parent()
+            .map(|p| p.join("package_cache"))
+            .unwrap_or_else(|| PathBuf::from("package_cache")),
     };
 
-    // create data directory
+    let app_data = AppConfig {
+        temp_dir: String::from(temp_dir),
+        package_cache_dir: package_cache_dir.clone(),
+    };
+
+    // create data directories
     tokio::fs::create_dir_all(String::from(temp_dir)).await?;
+    tokio::fs::create_dir_all(&package_cache_dir).await?;
+    println!("Package transform cache: {}", package_cache_dir.display());
 
     // Setup the npm package store. Packages are fetched on demand from the npm
     // registry (see NpmDatabase::ensure_package) instead of replicating the
