@@ -61,9 +61,101 @@ pub enum ServerError {
     SQLiteError(#[from] rusqlite::Error),
 }
 
+impl ServerError {
+    /// HTTP status this error should surface as. Client mistakes are 4xx,
+    /// upstream registry failures are 502, everything else is a plain 500.
+    /// Note: tarball errors coalesced through `Cached` are stringified into
+    /// `SendableError` and land in the default 500 arm.
+    pub fn status_code(&self) -> u16 {
+        match self {
+            ServerError::PackageNotFound(_) | ServerError::PackageVersionNotFound(_, _) => 404,
+            // The npm registry says the package doesn't exist: a not-found,
+            // not an upstream failure.
+            ServerError::NpmManifestDownloadError {
+                status_code: 404, ..
+            } => 404,
+            ServerError::InvalidPackageSpecifier
+            | ServerError::InvalidSemver(_)
+            | ServerError::Base64DecodingError()
+            | ServerError::InvalidQuery
+            | ServerError::InvalidCDNVersion
+            | ServerError::IntegerParse(_) => 400,
+            ServerError::TarballDownloadError { .. }
+            | ServerError::NpmManifestDownloadError { .. }
+            | ServerError::FailedRequest(_)
+            | ServerError::RequestFailed(_)
+            | ServerError::RequestErrorStatus { .. } => 502,
+            _ => 500,
+        }
+    }
+}
+
 impl From<ServerError> for std::io::Error {
     fn from(err: ServerError) -> Self {
         std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn not_found_errors_are_404() {
+        assert_eq!(
+            ServerError::PackageNotFound("left-pad".to_string()).status_code(),
+            404
+        );
+        assert_eq!(
+            ServerError::PackageVersionNotFound("a".to_string(), "1.2.3".to_string()).status_code(),
+            404
+        );
+        assert_eq!(
+            ServerError::NpmManifestDownloadError {
+                status_code: 404,
+                package_name: "nope".to_string(),
+            }
+            .status_code(),
+            404
+        );
+    }
+
+    #[test]
+    fn client_errors_are_400() {
+        assert_eq!(ServerError::InvalidPackageSpecifier.status_code(), 400);
+        assert_eq!(ServerError::InvalidQuery.status_code(), 400);
+        assert_eq!(ServerError::InvalidCDNVersion.status_code(), 400);
+        assert_eq!(ServerError::Base64DecodingError().status_code(), 400);
+    }
+
+    #[test]
+    fn upstream_errors_are_502() {
+        assert_eq!(
+            ServerError::TarballDownloadError {
+                status_code: 503,
+                url: "https://registry.npmjs.org/react".to_string(),
+            }
+            .status_code(),
+            502
+        );
+        assert_eq!(
+            ServerError::NpmManifestDownloadError {
+                status_code: 500,
+                package_name: "react".to_string(),
+            }
+            .status_code(),
+            502
+        );
+        assert_eq!(
+            ServerError::RequestErrorStatus { status_code: 503 }.status_code(),
+            502
+        );
+    }
+
+    #[test]
+    fn internal_errors_are_500() {
+        assert_eq!(ServerError::SerializeError().status_code(), 500);
+        assert_eq!(ServerError::DeserializeError().status_code(), 500);
     }
 }
 

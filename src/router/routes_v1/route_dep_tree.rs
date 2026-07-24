@@ -54,6 +54,6 @@ pub async fn dep_tree_handler(
 ) -> Response {
     match get_dep_tree_reply(path, state.npm_db, state.pkg_processor).await {
         Ok(reply) => reply.into_response(),
-        Err(err) => ErrorReply::from(err).respond(15 * 60),
+        Err(err) => ErrorReply::from(err).respond(),
     }
 }

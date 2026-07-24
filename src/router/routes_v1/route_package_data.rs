@@ -39,6 +39,6 @@ pub async fn package_data_handler(
 ) -> Response {
     match get_package_data_reply(path, &state.pkg_processor).await {
         Ok(reply) => reply.into_response(),
-        Err(err) => ErrorReply::from(err).respond(3600),
+        Err(err) => ErrorReply::from(err).respond(),
     }
 }

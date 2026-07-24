@@ -39,5 +39,5 @@ pub fn routes(npm_db: NpmDatabase, app_data: AppConfig) -> Router {
 }
 
 async fn not_found_handler() -> Response {
-    ErrorReply::new(404, "Not found".to_string(), "Not found".to_string()).respond(1800)
+    ErrorReply::new(404, "Not found".to_string(), "Not found".to_string()).respond()
 }

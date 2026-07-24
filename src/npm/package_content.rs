@@ -1,11 +1,13 @@
 use std::{fmt, io::Cursor, sync::Arc, time::Duration};
 
-use crate::{app_error::ServerError, cached::Cached, npm_replicator::database::NpmDatabase};
+use crate::{
+    app_error::ServerError, cached::Cached, npm::http_client::get_client,
+    npm_replicator::database::NpmDatabase,
+};
+use bytes::Bytes;
 use flate2::{bufread::GzEncoder, Compression};
 use moka::future::Cache;
-use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
-use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
-use bytes::Bytes;
+use reqwest_middleware::ClientWithMiddleware;
 
 pub type Content = Arc<Cursor<Bytes>>;
 
@@ -65,23 +67,6 @@ async fn get_tarball(
     Ok(res)
 }
 
-fn get_client() -> ClientWithMiddleware {
-    let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
-
-    let client_builder = reqwest::ClientBuilder::new()
-        .timeout(Duration::from_secs(120))
-        .deflate(true)
-        .gzip(true)
-        .brotli(true);
-    let base_client = client_builder
-        .build()
-        .expect("reqwest::ClientBuilder::build()");
-
-    ClientBuilder::new(base_client)
-        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
-        .build()
-}
-
 #[derive(Clone)]
 pub struct PackageContentFetcher {
     cache: Cache<String, Cached<Content>>,
@@ -90,6 +75,7 @@ pub struct PackageContentFetcher {
 
 impl PackageContentFetcher {
     pub fn new() -> PackageContentFetcher {
+        // Entries idle out after 1 day, refreshed at most every 7 days.
         let ttl = Duration::from_secs(86400);
         let max_capacity = 50;
         PackageContentFetcher {

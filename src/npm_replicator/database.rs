@@ -169,4 +169,12 @@ impl NpmDatabase {
         }
         self.fetch_and_store(name).await
     }
+
+    /// Cheap liveness probe used by `/health`. An empty database is healthy;
+    /// an unreadable one is not.
+    pub fn ping(&self) -> AppResult<()> {
+        let connection = self.db.lock();
+        connection.query_row("SELECT 1", [], |_| Ok(()))?;
+        Ok(())
+    }
 }

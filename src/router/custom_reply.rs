@@ -26,6 +26,18 @@ impl CustomReply {
         Ok(reply)
     }
 
+    /// Build a JSON reply from an already-encoded body. Used as a panic-free
+    /// fallback when serializing an error reply somehow fails.
+    pub fn raw_json(body: Vec<u8>) -> CustomReply {
+        let mut reply = CustomReply {
+            body,
+            status: StatusCode::OK,
+            headers: HashMap::new(),
+        };
+        reply.add_header("content-type", "application/json");
+        reply
+    }
+
     pub fn msgpack<T>(value: &T) -> Result<CustomReply, ServerError>
     where
         T: Serialize,
