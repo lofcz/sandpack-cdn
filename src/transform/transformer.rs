@@ -105,20 +105,28 @@ pub fn transform_file(filename: &str, code: &str) -> Result<TransformedFile, Ser
                         decls: &decls,
                     });
 
+                    // inject_helpers MUST run before common_js. SWC's external
+                    // helpers emit ESM `import … from "@swc/helpers/…"`. If we
+                    // inject after the CJS pass those imports stay as bare
+                    // `import` statements, Sandpack evals the file as a
+                    // function body, and the preview dies with
+                    // "Cannot use import statement outside a module" (seen on
+                    // lucide-react and other ESM packages). Running helpers
+                    // first lets common_js rewrite them to `require()`.
                     let program = program
                         .apply(expr_simplifier(unresolved_mark, SimplifyExprConfig::default()))
                         .apply(dead_branch_remover(unresolved_mark))
+                        .apply(inject_helpers(unresolved_mark))
                         .apply(common_js(
                             Resolver::Default,
                             unresolved_mark,
                             CommonJsConfig::default(),
                             // FeatureFlag, inferred from the `common_js` signature.
                             Default::default(),
-                        ))
-                        .apply(inject_helpers(unresolved_mark));
+                        ));
 
-                    // Collect dependencies - ALWAYS RUN THIS AFTER THE CJS CONVERSION
-                    // (so that `import` statements rewritten to `require` are seen).
+                    // Collect dependencies after CJS so helper/import edges are
+                    // visible as `require("…")` calls.
                     let decls: HashSet<(Atom, SyntaxContext)> =
                         collect_decls(&program).into_iter().collect();
                     let mut dependencies: HashSet<String> = HashSet::new();
@@ -206,4 +214,5 @@ mod test {
             String::from("\"use strict\";module.exports=\"hello world\";//other-comment\n")
         );
     }
+
 }
