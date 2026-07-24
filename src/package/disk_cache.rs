@@ -15,7 +15,9 @@ use crate::app_error::ServerError;
 use super::process::{MinimalCachedModule, ModuleDependenciesMap};
 
 /// Bump when the on-disk envelope / module shape changes (triggers rebuild).
-const DISK_FORMAT: u32 = 1;
+/// v2: inject_helpers runs before common_js so `@swc/helpers` edges are CJS
+/// `require()`s (v1 could leave bare ESM `import` in transformed ESM packages).
+const DISK_FORMAT: u32 = 2;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct DiskEnvelope {

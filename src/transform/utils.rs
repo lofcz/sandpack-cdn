@@ -40,9 +40,15 @@ pub fn match_str(node: &Expr) -> Option<(Atom, Span)> {
     match node {
         // "string" or 'string'
         Expr::Lit(Lit::Str(s)) => Some((s.value.to_atom_lossy().into_owned(), s.span)),
-        // `string`
+        // `string` — prefer cooked (decoded) over raw (escape sequences).
         Expr::Tpl(tpl) if tpl.quasis.len() == 1 && tpl.exprs.is_empty() => {
-            Some((tpl.quasis[0].raw.clone(), tpl.span))
+            let quasi = &tpl.quasis[0];
+            let value = quasi
+                .cooked
+                .as_ref()
+                .map(|c| c.to_atom_lossy().into_owned())
+                .unwrap_or_else(|| quasi.raw.clone());
+            Some((value, tpl.span))
         }
         _ => None,
     }

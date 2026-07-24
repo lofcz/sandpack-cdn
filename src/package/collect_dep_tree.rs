@@ -256,6 +256,15 @@ impl DepTreeCollector {
             return true;
         }
 
+        // Stale cache / bad edges: only well-formed package names are resolvable.
+        if !super::npm_specifier::is_valid_package_name(dep_request.name.as_str()) {
+            warn!(
+                "Skipping non-npm dependency specifier {:?}",
+                dep_request.name
+            );
+            return true;
+        }
+
         // Add a limit to the total amount of deps
         if self.total_dep_count() > 500 {
             return true;

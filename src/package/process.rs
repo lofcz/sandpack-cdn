@@ -93,22 +93,22 @@ fn collect_file_paths(
 }
 
 fn deps_to_files_and_modules(deps: &[String]) -> (HashSet<String>, HashSet<String>) {
+    use super::npm_specifier::{parse_module_specifier, ModuleSpecifier};
+
     let mut used_modules: HashSet<String> = HashSet::new();
     let mut file_specifiers: HashSet<String> = HashSet::new();
 
     for dep in deps {
-        if !dep.starts_with('.') {
-            let parts: Vec<&str> = dep.split('/').collect();
-            if !parts.is_empty() {
-                let mut module_specifier = String::from(parts[0]);
-                if module_specifier.starts_with('@') {
-                    module_specifier.push('/');
-                    module_specifier.push_str(parts[1]);
-                }
-                used_modules.insert(module_specifier);
+        match parse_module_specifier(dep) {
+            Some(ModuleSpecifier::Relative(path)) => {
+                file_specifiers.insert(path);
             }
-        } else {
-            file_specifiers.insert(dep.clone());
+            Some(ModuleSpecifier::Package { name, .. }) => {
+                used_modules.insert(name);
+            }
+            None => {
+                // URI / absolute / invalid — not a package-graph edge.
+            }
         }
     }
 
@@ -144,11 +144,20 @@ fn transform_files(
                                 used_modules.insert(module_dep);
                             }
 
+                            // Per-file `d` is what Sandpack walks with addDependency.
+                            // Only keep edges the specifier parser accepts.
+                            let graph_deps: Vec<String> = deps
+                                .into_iter()
+                                .filter(|d| {
+                                    super::npm_specifier::parse_module_specifier(d).is_some()
+                                })
+                                .collect();
+
                             result_map.insert(
                                 found_file.clone(),
                                 MinimalFile::File {
                                     content: transformed_file.content,
-                                    dependencies: deps.clone(),
+                                    dependencies: graph_deps,
                                     is_transpiled: true,
                                 },
                             );
@@ -300,6 +309,10 @@ fn transform_package(
         if key.eq(&package_name) || dependencies.contains_key(key) {
             continue;
         }
+        // Keys here are already bare package names from parse_module_specifier.
+        if !super::npm_specifier::is_valid_package_name(key) {
+            continue;
+        }
         dependencies.insert(
             key.clone(),
             ModuleDependency {
@@ -312,7 +325,7 @@ fn transform_package(
 
     let used_modules: Vec<String> = used_modules
         .into_iter()
-        .filter(|v| !v.eq(&package_name))
+        .filter(|v| !v.eq(&package_name) && super::npm_specifier::is_valid_package_name(v))
         .collect::<Vec<String>>();
     let module_spec = MinimalCachedModule {
         files: module_files,
