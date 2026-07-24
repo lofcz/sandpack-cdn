@@ -262,7 +262,11 @@ fn transform_package(
         }
     }
 
-    // collect dependencies
+    // collect dependencies for `/dep_tree` (only `is_used` edges are followed):
+    //  1) declared `dependencies` (used or not — unused stay is_used=false)
+    //  2) used `peerDependencies` (version from peer range)
+    //  3) used bare imports with no declared range (e.g. `@swc/helpers` pulled
+    //     in by `@tailwindcss/browser` without a peer entry) → dist-tag "latest"
     let mut dependencies: ModuleDependenciesMap = HashMap::new();
     if let Some(deps) = parsed_pkg_json.dependencies {
         for (key, value) in deps.iter() {
@@ -274,6 +278,36 @@ fn transform_package(
                 },
             );
         }
+    }
+    if let Some(peers) = parsed_pkg_json.peer_dependencies {
+        for (key, value) in peers.iter() {
+            if dependencies.contains_key(key) {
+                continue;
+            }
+            if !used_modules.contains(key) {
+                continue;
+            }
+            dependencies.insert(
+                key.clone(),
+                ModuleDependency {
+                    version: value.clone(),
+                    is_used: true,
+                },
+            );
+        }
+    }
+    for key in used_modules.iter() {
+        if key.eq(&package_name) || dependencies.contains_key(key) {
+            continue;
+        }
+        dependencies.insert(
+            key.clone(),
+            ModuleDependency {
+                // Alias path in collect_dep_tree resolves npm dist-tags.
+                version: String::from("latest"),
+                is_used: true,
+            },
+        );
     }
 
     let used_modules: Vec<String> = used_modules

@@ -26,6 +26,12 @@ pub struct PackageJSON {
     pub browser: Option<PackageJSONExport>,
     pub exports: Option<PackageJSONExport>,
     pub dependencies: Option<HashMap<String, String>>,
+    /// Peers declared by the package. Used imports that only appear here
+    /// (e.g. `@swc/helpers` for `@tailwindcss/browser`) must still enter
+    /// `/dep_tree` — Sandpack installs a flat map and will not resolve them
+    /// otherwise.
+    #[serde(rename = "peerDependencies", default)]
+    pub peer_dependencies: Option<HashMap<String, String>>,
 }
 
 pub fn parse_pkg_json(content: String) -> Result<PackageJSON, ServerError> {
