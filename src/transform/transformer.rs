@@ -82,9 +82,13 @@ pub fn transform_file(filename: &str, code: &str) -> Result<TransformedFile, Ser
     // so thread-locals (GLOBALS/HELPERS) stay intact.
     stacker::maybe_grow(2 * 1024 * 1024, 64 * 1024 * 1024, move || {
         GLOBALS.set(&Globals::new(), || {
-            HELPERS.set(
-                &Helpers::new(/* external helpers from @swc/helpers */ true),
-                || {
+            // Inline helpers (requires swc_core feature `ecma_helpers_inline`).
+            // Sandpack evals each file as a CJS function body — pulling
+            // `@swc/helpers` as a runtime dep is the wrong model (extra packages,
+            // cache keys, and import/require ordering traps). Order is the SWC
+            // contract: transforms that *use* helpers first, then inject_helpers
+            // to materialize their bodies in-file.
+            HELPERS.set(&Helpers::new(/* external */ false), || {
                     let unresolved_mark = Mark::new();
                     let top_level_mark = Mark::new();
 
@@ -105,25 +109,16 @@ pub fn transform_file(filename: &str, code: &str) -> Result<TransformedFile, Ser
                         decls: &decls,
                     });
 
-                    // inject_helpers MUST run before common_js. SWC's external
-                    // helpers emit ESM `import … from "@swc/helpers/…"`. If we
-                    // inject after the CJS pass those imports stay as bare
-                    // `import` statements, Sandpack evals the file as a
-                    // function body, and the preview dies with
-                    // "Cannot use import statement outside a module" (seen on
-                    // lucide-react and other ESM packages). Running helpers
-                    // first lets common_js rewrite them to `require()`.
                     let program = program
                         .apply(expr_simplifier(unresolved_mark, SimplifyExprConfig::default()))
                         .apply(dead_branch_remover(unresolved_mark))
-                        .apply(inject_helpers(unresolved_mark))
                         .apply(common_js(
                             Resolver::Default,
                             unresolved_mark,
                             CommonJsConfig::default(),
-                            // FeatureFlag, inferred from the `common_js` signature.
                             Default::default(),
-                        ));
+                        ))
+                        .apply(inject_helpers(unresolved_mark));
 
                     // Collect dependencies after CJS so helper/import edges are
                     // visible as `require("…")` calls.
@@ -213,6 +208,37 @@ mod test {
             .content,
             String::from("\"use strict\";module.exports=\"hello world\";//other-comment\n")
         );
+    }
+
+    #[test]
+    fn esm_star_import_inlines_interop_helpers() {
+        let res = transform_file(
+            "index.js",
+            "import * as icons from './icons.js';\nexport default icons;\n",
+        )
+        .unwrap();
+        assert!(
+            !res.content.contains("import "),
+            "expected no residual ESM import, got {}",
+            res.content
+        );
+        assert!(
+            !res.content.contains("@swc/helpers"),
+            "helpers must be inlined, not external: {}",
+            res.content
+        );
+        assert!(
+            res.dependencies.iter().all(|d| !d.starts_with("@swc/helpers")),
+            "expected no @swc/helpers dep edge, got {:?}",
+            res.dependencies
+        );
+        if res.content.contains("_interop_require_wildcard") {
+            assert!(
+                res.content.contains("function _interop_require_wildcard"),
+                "helper call without inlined definition: {}",
+                res.content
+            );
+        }
     }
 
 }
